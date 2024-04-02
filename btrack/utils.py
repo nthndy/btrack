@@ -231,6 +231,7 @@ def tracks_to_napari(
 def update_segmentation(
     segmentation: np.ndarray,
     tracks: list[btypes.Tracklet],
+    scale: (),
     *,
     color_by: str = "ID",
 ) -> np.ndarray:
@@ -267,6 +268,13 @@ def update_segmentation(
 
     keys = {k: i for i, k in enumerate(DEFAULT_EXPORT_PROPERTIES)}
 
+    scale = tuple([1.0] * segmentation.ndim) if scale is None else scale
+
+    if len(scale) != segmentation.ndim:
+        raise ValueError(
+            f"Scale dimensions do not match segmentation: {scale}."
+        )
+
     coords_arr = np.concatenate(
         [
             track.to_array()[~np.array(track.dummy), : len(keys)].astype(int)
@@ -282,6 +290,16 @@ def update_segmentation(
         frame_coords = coords_arr[coords_arr[:, 1] == t]
 
         xc, yc = frame_coords[:, keys["x"]], frame_coords[:, keys["y"]]
+        (
+            xc,
+            yc,
+        ) = (
+            xc * scale[-2],
+            yc * scale[-1],
+        )
+        xc = [int(xi) for xi in xc]
+        yc = [int(yi) for yi in yc]  # hacky fix needed assap
+
         new_id = frame_coords[:, keys[color_by]]
 
         if single_segmentation.ndim == constants.Dimensionality.TWO:
